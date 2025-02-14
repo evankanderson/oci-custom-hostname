@@ -14,6 +14,11 @@ type Proxy struct {
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 
+	if r.URL.Path == "/v2/" {
+		p.handleLogin(w, r)
+		return
+	}
+
 	if r.URL.Path != "/v2/" &&
 		!strings.HasPrefix(r.URL.Path, "/v2/img") &&
 		!strings.HasPrefix(r.URL.Path, "/v2/stacklok/codegate") {
@@ -50,6 +55,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Header = r.Header
+	// Override (required for ghcr.io) authentication header
+	req.Header.Set("Authorization", "Bearer QQ==")
 
 	fmt.Printf("Proxying to %s\n", newUrl)
 
@@ -75,4 +82,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if written, err := io.Copy(w, resp.Body); err != nil {
 		log.Printf("Error copying response body after %d bytes: %v\n", written, err)
 	}
+}
+
+func (p *Proxy) handleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("content-type", "application/json")
+	w.Header().Add("docker-distribution-api-version", "registry/2.0")
+	//	w.Header().Add("www-authenticate", `Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:stacklok/codegate:pull"`)
+	w.WriteHeader(http.StatusUnauthorized)
 }
