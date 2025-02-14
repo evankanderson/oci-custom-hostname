@@ -5,16 +5,29 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
-type Proxy struct{}
+type Proxy struct {
+}
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 
+	if r.URL.Path != "/v2/" &&
+		!strings.HasPrefix(r.URL.Path, "/v2/img") &&
+		!strings.HasPrefix(r.URL.Path, "/v2/stacklok/codegate") {
+		w.WriteHeader(404)
+		return
+	}
+
 	newUrl := r.URL
 	newUrl.Host = "ghcr.io"
 	newUrl.Scheme = "https"
+
+	if strings.HasPrefix(newUrl.Path, "/v2/img") {
+		newUrl.Path = "/v2/stacklok/codegate" + newUrl.Path[7:]
+	}
 
 	fmt.Printf("Headers: %+v\n", r.Header)
 
